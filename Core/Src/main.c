@@ -1,30 +1,29 @@
 #include "main.h"
 #include "hw.h"
-#include "cmsis_os.h"
+#include "FreeRTOS.h"
+#include "task.h"
 #include "usb_device.h"
 
-osThreadId_t defaultTaskHandle;
-const osThreadAttr_t defaultTask_attributes = {
-  .name = "defaultTask",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
-
-void StartDefaultTask(void *argument);
+TaskHandle_t default_task_handle;
+void start_default_task(void *argument);
 
 int main(void)
 {
-  init();
-
-  /* Init scheduler */
-  osKernelInitialize();
+  hw_init();
 
   /* Create the thread(s) */
   /* creation of defaultTask */
-  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  if (xTaskCreate(start_default_task,
+                  "default_task",
+                  128,
+                  NULL,
+                  7,
+                  &default_task_handle) != pdPASS) {
+    Error_Handler();
+  }
 
   /* Start scheduler */
-  osKernelStart();
+  vTaskStartScheduler();
 
   /* We should never get here as control is now taken by the scheduler */
 
@@ -34,7 +33,7 @@ int main(void)
   }
 }
 
-void StartDefaultTask(void *argument)
+void start_default_task(void *argument)
 {
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
@@ -42,13 +41,13 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    vTaskDelay(1);
   }
 }
 
 void Error_Handler(void)
 {
-  __disable_irq();
+  taskDISABLE_INTERRUPTS();
   while (1)
   {
   }

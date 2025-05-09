@@ -7,7 +7,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART3_UART_Init(void);
 
-void init()
+void hw_init()
 {
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
@@ -18,6 +18,51 @@ void init()
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART3_UART_Init();
+}
+
+void toggle_red_led()
+{
+  HAL_GPIO_TogglePin(RED_LED_GPIO_PORT, RED_LED_GPIO_PIN);
+}
+
+void toggle_green_led()
+{
+  HAL_GPIO_TogglePin(GREEN_LED_GPIO_PORT, GREEN_LED_GPIO_PIN);
+}
+
+void toggle_blue_led()
+{
+  HAL_GPIO_TogglePin(BLUE_LED_GPIO_PORT, BLUE_LED_GPIO_PIN);
+}
+
+void red_led_on()
+{
+	HAL_GPIO_WritePin(RED_LED_GPIO_PORT, RED_LED_GPIO_PIN, GPIO_PIN_SET);
+}
+
+void red_led_off()
+{
+	HAL_GPIO_WritePin(RED_LED_GPIO_PORT, RED_LED_GPIO_PIN, GPIO_PIN_RESET);
+}
+
+void green_led_on()
+{
+	HAL_GPIO_WritePin(GREEN_LED_GPIO_PORT, GREEN_LED_GPIO_PIN, GPIO_PIN_SET);
+}
+
+void green_led_off()
+{
+	HAL_GPIO_WritePin(GREEN_LED_GPIO_PORT, GREEN_LED_GPIO_PIN, GPIO_PIN_RESET);
+}
+
+void blue_led_on()
+{
+	HAL_GPIO_WritePin(BLUE_LED_GPIO_PORT, BLUE_LED_GPIO_PIN, GPIO_PIN_SET);
+}
+
+void blue_led_off()
+{
+	HAL_GPIO_WritePin(BLUE_LED_GPIO_PORT, BLUE_LED_GPIO_PIN, GPIO_PIN_RESET);
 }
 
 void SystemClock_Config(void)
