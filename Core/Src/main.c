@@ -4,11 +4,58 @@
 #include "task.h"
 #include "usb_device.h"
 
+#define DELAY_RED   500
+#define DELAY_GREEN 400
+#define DELAY_BLUE  100
+
 TaskHandle_t default_task_handle;
 void start_default_task(void *argument);
 
+typedef struct Led {
+  GPIO_TypeDef *port;
+  uint16_t pin;
+  int delay;
+} Led;
+
+void toggle_led(GPIO_TypeDef *port, uint16_t pin)
+{
+  HAL_GPIO_TogglePin(port, pin);
+}
+
+void led_task(void *arg)
+{
+  struct Led *led = (struct Led *)arg;
+
+  while (1) {
+    toggle_led(led->port, led->pin);
+    vTaskDelay(led->delay);
+  }
+}
+
+TaskHandle_t red_led_task_handle;
+TaskHandle_t green_led_task_handle;
+TaskHandle_t blue_led_task_handle;
+
 int main(void)
 {
+  static struct Led red_led = {
+      .port = RED_LED_GPIO_PORT,
+      .pin = RED_LED_GPIO_PIN,
+      .delay = DELAY_RED
+  };
+
+  static struct Led green_led = {
+      .port = GREEN_LED_GPIO_PORT,
+      .pin = GREEN_LED_GPIO_PIN,
+      .delay = DELAY_GREEN
+  };
+
+  static struct Led blue_led = {
+      .port = BLUE_LED_GPIO_PORT,
+      .pin = BLUE_LED_GPIO_PIN,
+      .delay = DELAY_BLUE
+  };
+
   hw_init();
 
   /* Create the thread(s) */
@@ -19,6 +66,33 @@ int main(void)
                   NULL,
                   7,
                   &default_task_handle) != pdPASS) {
+    Error_Handler();
+  }
+
+  if (xTaskCreate(led_task,
+                  "red_led_task",
+                  128,
+                  &red_led,
+                  7,
+                  &green_led_task_handle) != pdPASS) {
+    Error_Handler();
+  }
+
+  if (xTaskCreate(led_task,
+                  "green_led_task",
+                  128,
+                  &green_led,
+                  7,
+                  &green_led_task_handle) != pdPASS) {
+    Error_Handler();
+  }
+
+  if (xTaskCreate(led_task,
+                  "blue_led_task",
+                  128,
+                  &blue_led,
+                  7,
+                  &green_led_task_handle) != pdPASS) {
     Error_Handler();
   }
 
