@@ -3,38 +3,32 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "usb_device.h"
+#include "usbd_cdc_if.h"
 
 #define DELAY_RED   500
 #define DELAY_GREEN 400
 #define DELAY_BLUE  100
 
-TaskHandle_t default_task_handle;
-void start_default_task(void *argument);
+TaskHandle_t red_led_task_handle;
+TaskHandle_t green_led_task_handle;
+TaskHandle_t blue_led_task_handle;
+TaskHandle_t usb_task_handle;
+
+void toggle_led(GPIO_TypeDef *port, uint16_t pin);
+void get_command(char *command);
+void process_red(int period);
+void process_green(int period);
+void process_blue(int period);
+
+void led_task(void *arg);
+void uart_task(void *arg);
+void usb_task(void *arg);
 
 typedef struct Led {
   GPIO_TypeDef *port;
   uint16_t pin;
   int delay;
 } Led;
-
-void toggle_led(GPIO_TypeDef *port, uint16_t pin)
-{
-  HAL_GPIO_TogglePin(port, pin);
-}
-
-void led_task(void *arg)
-{
-  struct Led *led = (struct Led *)arg;
-
-  while (1) {
-    toggle_led(led->port, led->pin);
-    vTaskDelay(led->delay);
-  }
-}
-
-TaskHandle_t red_led_task_handle;
-TaskHandle_t green_led_task_handle;
-TaskHandle_t blue_led_task_handle;
 
 int main(void)
 {
@@ -58,14 +52,12 @@ int main(void)
 
   hw_init();
 
-  /* Create the thread(s) */
-  /* creation of defaultTask */
-  if (xTaskCreate(start_default_task,
-                  "default_task",
+  if (xTaskCreate(uart_task,
+                  "usb_task",
                   128,
                   NULL,
                   7,
-                  &default_task_handle) != pdPASS) {
+                  &usb_task_handle) != pdPASS) {
     Error_Handler();
   }
 
@@ -107,15 +99,122 @@ int main(void)
   }
 }
 
-void start_default_task(void *argument)
+void toggle_led(GPIO_TypeDef *port, uint16_t pin)
 {
-  /* init code for USB_DEVICE */
-  MX_USB_DEVICE_Init();
+  HAL_GPIO_TogglePin(port, pin);
+}
+
+void process_red(int period)
+{
+
+}
+
+void process_green(int period)
+{
+
+}
+
+void process_blue(int period)
+{
+
+}
+
+void led_task(void *arg)
+{
+  struct Led *led = (struct Led *)arg;
+
+  while (1) {
+    toggle_led(led->port, led->pin);
+    vTaskDelay(led->delay);
+  }
+}
+
+void uart_task(void *argument)
+{
+  char buf[32];
+  void (*process_fn)(int period);
 
   /* Infinite loop */
   for(;;)
   {
-    vTaskDelay(1);
+    get_command(buf);
+
+    process_fn = NULL;
+
+    switch (buf[0]) {
+    case 'r':
+      process_fn = &process_red;
+      break;
+    case 'g':
+      process_fn = &process_green;
+      break;
+    case 'b':
+      process_fn = &process_blue;
+      break;
+    }
+
+    if (process_fn) {
+      int period = strtoul(&buf[1], NULL, 10);
+      if (period) {
+        process_fn(period);
+      }
+    }
+  }
+}
+
+void usb_task(void *arg)
+{
+  MX_USB_DEVICE_Init();
+
+  static const char *buf = "Datos\r\n";
+
+  /* Infinite loop */
+  for(;;)
+  {
+    CDC_Transmit_FS((uint8_t *)buf, strlen(buf));
+    vTaskDelay(1000);
+  }
+}
+
+void get_command(char *command)
+{
+  uint8_t character;
+
+  while (1) {
+    if (HAL_UART_Receive(&huart3, &character, 1, 50) != HAL_TIMEOUT) {
+      HAL_UART_Transmit(&huart3, &character, 1, HAL_MAX_DELAY);
+      if (character == '\r') {
+        uint8_t LF = '\n';
+        HAL_UART_Transmit(&huart3, &LF, 1, HAL_MAX_DELAY);
+        *command = '\0';
+        return;
+      }
+      *command = character;
+      command++;
+    }
+  }
+}
+
+/**
+  * @brief This function handles System tick timer.
+  */
+void SysTick_Handler(void)
+{
+  HAL_IncTick();
+
+  if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) {
+    xPortSysTickHandler();
+  }
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if (GPIO_Pin == USER_BUTTON_GPIO_PIN)
+  {
+  }
+  else if (GPIO_Pin == GPIO_PIN_9)
+  {
+    HAL_PCDEx_BCD_VBUSDetect(&hpcd_USB_OTG_FS);
   }
 }
 

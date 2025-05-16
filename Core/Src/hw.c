@@ -1,7 +1,7 @@
 #include "stm32f4xx_hal.h"
 #include "main.h"
 
-UART_HandleTypeDef huart3;
+UART_HandleTypeDef huart3 = {0};
 
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
@@ -150,6 +150,10 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(USB_OverCurrent_GPIO_Port, &GPIO_InitStruct);
+
+  /*EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 15);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
 void MX_USART3_UART_Init(void)

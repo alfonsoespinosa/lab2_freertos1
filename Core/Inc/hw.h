@@ -1,6 +1,9 @@
 #ifndef INC_HW_H_
 #define INC_HW_H_
 
+extern UART_HandleTypeDef huart3;
+extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
+
 void hw_init();
 
 void toggle_red_led();
