@@ -51,9 +51,9 @@ static struct Led blue_led = {
     .delay = DELAY_BLUE
 };
 
-void toggle_timer_func( TimerHandle_t xTimer )
+void toggle_timer_func(TimerHandle_t xTimer)
 {
-	struct Led *led = pvTimerGetTimerID( xTimer );
+	struct Led *led = pvTimerGetTimerID(xTimer);
 	toggle_led(led->port, led->pin);
 }
 
@@ -65,49 +65,63 @@ int main(void)
   green_led.queue = xQueueCreate(1, sizeof(uint32_t));
   blue_led.queue = xQueueCreate(1, sizeof(uint32_t));
 
-  if (xTaskCreate(uart_task,
-                  "uart_task",
-                  128,
-                  NULL,
-                  7,
-                  &usb_task_handle) != pdPASS) {
-    Error_Handler();
-  }
-
-  if (xTaskCreate(led_task,
-                  "red_led_task",
-                  128,
-                  &red_led,
-                  7,
-                  &red_led_task_handle) != pdPASS) {
-    Error_Handler();
-  }
-
-  if (xTaskCreate(led_task,
-                  "green_led_task",
-                  128,
-                  &green_led,
-                  7,
-                  &green_led_task_handle) != pdPASS) {
-    Error_Handler();
-  }
-
-  if (xTaskCreate(led_task,
-                  "blue_led_task",
-                  128,
-                  &blue_led,
-                  7,
-                  &blue_led_task_handle) != pdPASS) {
-    Error_Handler();
-  }
-
-//  TimerHandle_t red_timer = xTimerCreate("red_timer",
-//                                         DELAY_RED,
-//										 pdTRUE,
-//										 &red_led,
-//										 toggle_timer_func);
+//  if (xTaskCreate(uart_task,
+//                  "uart_task",
+//                  128,
+//                  NULL,
+//                  7,
+//                  &usb_task_handle) != pdPASS) {
+//    Error_Handler();
+//  }
 //
-//  xTimerStart(red_timer, 0);
+//  if (xTaskCreate(led_task,
+//                  "red_led_task",
+//                  128,
+//                  &red_led,
+//                  7,
+//                  &red_led_task_handle) != pdPASS) {
+//    Error_Handler();
+//  }
+//
+//  if (xTaskCreate(led_task,
+//                  "green_led_task",
+//                  128,
+//                  &green_led,
+//                  7,
+//                  &green_led_task_handle) != pdPASS) {
+//    Error_Handler();
+//  }
+//
+//  if (xTaskCreate(led_task,
+//                  "blue_led_task",
+//                  128,
+//                  &blue_led,
+//                  7,
+//                  &blue_led_task_handle) != pdPASS) {
+//    Error_Handler();
+//  }
+
+  TimerHandle_t red_timer = xTimerCreate("red_timer",
+                                         DELAY_RED,
+                                         pdTRUE,
+                                         &red_led,
+                                         toggle_timer_func);
+
+  TimerHandle_t green_timer = xTimerCreate("green_timer",
+                                           DELAY_GREEN,
+                                           pdTRUE,
+                                           &green_led,
+                                           toggle_timer_func);
+
+  TimerHandle_t blue_timer = xTimerCreate("blue_timer",
+                                          DELAY_BLUE,
+                                          pdTRUE,
+                                          &blue_led,
+                                          toggle_timer_func);
+
+  xTimerStart(red_timer, 0);
+  xTimerStart(green_timer, 0);
+  xTimerStart(blue_timer, 0);
 
   /* Start scheduler */
   vTaskStartScheduler();
