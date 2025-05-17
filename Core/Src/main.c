@@ -2,6 +2,8 @@
 #include "hw.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "queue.h"
+#include "timers.h"
 #include "usb_device.h"
 #include "usbd_cdc_if.h"
 
@@ -28,32 +30,43 @@ typedef struct Led {
   GPIO_TypeDef *port;
   uint16_t pin;
   int delay;
+  QueueHandle_t queue;
 } Led;
+
+static struct Led red_led = {
+    .port = RED_LED_GPIO_PORT,
+    .pin = RED_LED_GPIO_PIN,
+    .delay = DELAY_RED
+};
+
+static struct Led green_led = {
+    .port = GREEN_LED_GPIO_PORT,
+    .pin = GREEN_LED_GPIO_PIN,
+    .delay = DELAY_GREEN
+};
+
+static struct Led blue_led = {
+    .port = BLUE_LED_GPIO_PORT,
+    .pin = BLUE_LED_GPIO_PIN,
+    .delay = DELAY_BLUE
+};
+
+void toggle_timer_func( TimerHandle_t xTimer )
+{
+	struct Led *led = pvTimerGetTimerID( xTimer );
+	toggle_led(led->port, led->pin);
+}
 
 int main(void)
 {
-  static struct Led red_led = {
-      .port = RED_LED_GPIO_PORT,
-      .pin = RED_LED_GPIO_PIN,
-      .delay = DELAY_RED
-  };
-
-  static struct Led green_led = {
-      .port = GREEN_LED_GPIO_PORT,
-      .pin = GREEN_LED_GPIO_PIN,
-      .delay = DELAY_GREEN
-  };
-
-  static struct Led blue_led = {
-      .port = BLUE_LED_GPIO_PORT,
-      .pin = BLUE_LED_GPIO_PIN,
-      .delay = DELAY_BLUE
-  };
-
   hw_init();
 
+  red_led.queue = xQueueCreate(1, sizeof(uint32_t));
+  green_led.queue = xQueueCreate(1, sizeof(uint32_t));
+  blue_led.queue = xQueueCreate(1, sizeof(uint32_t));
+
   if (xTaskCreate(uart_task,
-                  "usb_task",
+                  "uart_task",
                   128,
                   NULL,
                   7,
@@ -66,7 +79,7 @@ int main(void)
                   128,
                   &red_led,
                   7,
-                  &green_led_task_handle) != pdPASS) {
+                  &red_led_task_handle) != pdPASS) {
     Error_Handler();
   }
 
@@ -84,9 +97,17 @@ int main(void)
                   128,
                   &blue_led,
                   7,
-                  &green_led_task_handle) != pdPASS) {
+                  &blue_led_task_handle) != pdPASS) {
     Error_Handler();
   }
+
+//  TimerHandle_t red_timer = xTimerCreate("red_timer",
+//                                         DELAY_RED,
+//										 pdTRUE,
+//										 &red_led,
+//										 toggle_timer_func);
+//
+//  xTimerStart(red_timer, 0);
 
   /* Start scheduler */
   vTaskStartScheduler();
@@ -106,26 +127,28 @@ void toggle_led(GPIO_TypeDef *port, uint16_t pin)
 
 void process_red(int period)
 {
-
+  xQueueSend(red_led.queue, &period, 0);
 }
 
 void process_green(int period)
 {
-
+  xQueueSend(green_led.queue, &period, 0);
 }
 
 void process_blue(int period)
 {
-
+  xQueueSend(blue_led.queue, &period, 0);
 }
 
 void led_task(void *arg)
 {
   struct Led *led = (struct Led *)arg;
+  uint32_t period = led->delay;
 
   while (1) {
-    toggle_led(led->port, led->pin);
-    vTaskDelay(led->delay);
+    if (xQueueReceive(led->queue, &period, period) == pdFALSE) {
+	    toggle_led(led->port, led->pin);
+    }
   }
 }
 
@@ -211,6 +234,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   if (GPIO_Pin == USER_BUTTON_GPIO_PIN)
   {
+    vTaskNotifyGiveFromISR(red_led_task_handle, NULL);
   }
   else if (GPIO_Pin == GPIO_PIN_9)
   {
